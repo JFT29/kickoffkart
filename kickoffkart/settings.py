@@ -46,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -53,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 
 ROOT_URLCONF = 'kickoffkart.urls'
 
@@ -103,6 +105,14 @@ else:
         }
     }
 
+# --- Static files (CSS, JS, Images) ---
+STATIC_URL = 'static/'
+
+# Folder where collectstatic will put files for production
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# (Optional but recommended for production)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Password validation
