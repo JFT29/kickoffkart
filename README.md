@@ -1,6 +1,6 @@
 # KickoffKart — Football Shop (Assignment 2)
 
-**Live URL (PWS):** https://<replace-with-your-domain>.stndar.dev/
+**Live URL (PWS):** https://pbp.cs.ui.ac.id/juansao.fortunio/kickoffkart
 
 **Identity shown on the site**
 - App: **KickoffKart**
