@@ -37,6 +37,11 @@ ALLOWED_HOSTS = [
     "localhost",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://juansao-fortunio-kickoffkart.pbp.cs.ui.ac.id",
+    "https://pbp.cs.ui.ac.id",
+]
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
