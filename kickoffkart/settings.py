@@ -32,6 +32,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "juansao-fortunio-kickoffkart.pbp.cs.ui.ac.id"]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://juansao-fortunio-kickoffkart.pbp.cs.ui.ac.id",
+    "https://pbp.cs.ui.ac.id",
+]
+
 # Application definition
 
 INSTALLED_APPS = [
