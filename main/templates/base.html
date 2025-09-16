@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .price{font-weight:600}
+    .badge-featured{background:#ffc107}
+    .card-img-top{object-fit:cover;height:160px}
+  </style>
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-expand-lg bg-white border-bottom">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#">{{ app_name }}</a>
+      <div class="ms-auto small">
+        <span class="me-3">NPM: {{ your_npm }}</span>
+        <span class="me-3">Name: {{ your_name }}</span>
+        <span>Class: {{ your_class }}</span>
+      </div>
+    </div>
+  </nav>
+
+  {% block content %}
+  <!-- Content will be inserted here by child templates -->
+  {% endblock %}
+
+  <footer class="container small text-muted py-4">
+    <span>&copy; {{ app_name }} — Simple Django MVT demo.</span>
+  </footer>
+</body>
+</html>
