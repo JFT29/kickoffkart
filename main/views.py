@@ -1,6 +1,8 @@
-<<<<<<< HEAD
-﻿from django.shortcuts import render
+﻿from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse, JsonResponse, Http404
+from django.core import serializers
 from .models import Product
+from .forms import ProductForm
 
 def show_main(request):
     products = Product.objects.all().order_by("-is_featured", "name")
@@ -13,21 +15,12 @@ def show_main(request):
         "products": products,
     }
     return render(request, "main.html", context)
-=======
-﻿from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, JsonResponse, Http404
-from django.core import serializers
-from .models import Product
-from .forms import ProductForm
-
-# Existing show_main view remains unchanged
 
 def add_product(request):
     if request.method == "POST":
         form = ProductForm(request.POST or None, request.FILES or None)
         if form.is_valid():
             form.save()
-            # after add, go back to list page
             return redirect("main:show_main")
     else:
         form = ProductForm()
@@ -47,29 +40,16 @@ def product_list_xml(request):
     return HttpResponse(data, content_type="application/xml")
 
 # Data delivery: by id (JSON/XML)
-def product_detail_json(request, pk):  
+def product_detail_json(request, pk):
     qs = Product.objects.filter(pk=pk)
     if not qs.exists():
         raise Http404("Product not found")
     data = serializers.serialize("json", qs)
     return HttpResponse(data, content_type="application/json")
 
-def product_detail_xml(request, pk):  
+def product_detail_xml(request, pk):
     qs = Product.objects.filter(pk=pk)
     if not qs.exists():
         raise Http404("Product not found")
     data = serializers.serialize("xml", qs)
     return HttpResponse(data, content_type="application/xml")
-
-def show_main(request):
-    products = Product.objects.all()
-    context = {
-        'app_name': 'KickoffKart',
-        'your_npm': '2406365345',
-        'your_name': 'Juansao Fortunio Tandi',
-        'your_class': 'KKI', 
-        'products': products,
-        'total_products': products.count(),
-    }
-    return render(request, 'main.html', context)
->>>>>>> d8c3a27bade94cfc77382312121f9bcee581f472
