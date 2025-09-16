@@ -1,0 +1,26 @@
+[
+  {
+    "model": "main.product",
+    "pk": "33333333-3333-3333-3333-333333333333",
+    "fields": {
+      "name": "Phantom X Elite Ball",
+      "price": 349000,
+      "description": "Premium training football with textured panels for grip, lightweight bladder for consistent bounce, and durable outer cover for both turf and grass.",
+      "thumbnail": "main/phantom-x-elite-ball.jpeg",
+      "category": "ball",
+      "is_featured": true
+    }
+  },
+  {
+    "model": "main.product",
+    "pk": "44444444-4444-4444-4444-444444444444",
+    "fields": {
+      "name": "Titan Grip GK Gloves",
+      "price": 429000,
+      "description": "Latex palm for all-weather stickiness, breathable mesh backhand, reinforced fingers for shot-stopping confidence in training or matchday.",
+      "thumbnail": "main/titan-grip-gk-gloves.jpeg",
+      "category": "gloves",
+      "is_featured": false
+    }
+  }
+]
