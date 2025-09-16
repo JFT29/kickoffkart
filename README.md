@@ -1,3 +1,5 @@
+# the README for assignment 3 is written below assignment 2, 4 is below 3, and so on.
+
 # KickoffKart — Football Shop (Assignment 2)
 
 **Live URL (PWS):** https://pbp.cs.ui.ac.id/juansao.fortunio/kickoffkart
@@ -109,3 +111,58 @@ Focus on concepts: helps students learn core ideas of web development (models, v
 
 6. Any feedback for the teaching assistant
 PBP/PBD KKI TAs so far have been really helpful in every tutorials. I like the idea of separating us into several breakhout rooms, each managed by 1 TA. The weight of the tutorial is also still reasonable to finish within the time limit. Overall, my feedback is only positive, and I don't have any criticism.
+
+# KickoffKart — Assignment 3 (Forms & Data Delivery)
+
+A simple Django MVT app that lists football products, supports adding new products via a form, shows per-item detail pages, and exposes data delivery in **JSON** and **XML**, both for **all objects** and **by ID**.
+
+---
+
+1) **Why do platforms need data delivery?**  
+- Different clients (web, mobile, services) need machine-readable data.  
+- Decouples UI from data; enables integration, automation, and testing.  
+- Avoids scraping HTML; supports caching/versioning and clean contracts.
+
+2) **XML vs JSON & why JSON is more popular**  
+- Both are hierarchical; XML uses tags, JSON uses objects/arrays.  
+- JSON is less verbose, maps directly to language types, and parses fast in browsers.  
+- XML has rich standards (XSD/XPath/XSLT) but adds complexity.  
+- JSON “won” on the web/mobile stack: lightweight, native to JS, ubiquitous in REST.
+
+3) **Purpose of `form.is_valid()` in Django**  
+- Runs field/form validators and cleans inputs into `cleaned_data`.  
+- Prevents bad/unsafe data from being persisted.  
+- Surfaces errors back to the template for user correction.
+
+4) **Why `{% csrf_token %}` is required; what if omitted; possible exploits**  
+- Protects against Cross-Site Request Forgery: ensures POST/PUT/DELETE originate from your site.  
+- Without it, an attacker site can trigger state-changing requests using a logged-in user’s cookies.  
+- Effects: unintended creates/updates/deletes (e.g., adding products, changing settings).
+
+5) **How I implemented the checklist (step-by-step)**  
+- **URL wiring**: Route root in `kickoffkart/urls.py` to `main.urls`.  
+- **App URLs**: In `main/urls.py`, add pages (`/`, `/products/add/`, `/products/<uuid:pk>/`) and data endpoints (`/products/json/`, `/products/xml/`, `/products/json/<uuid:pk>/`, `/products/xml/<uuid:pk>/`).  
+- **Form**: Create `ProductForm` (ModelForm) exposing all fields.  
+- **Views (pages)**: `add_product` (GET form/POST save→redirect), `product_detail` (fetch by pk).  
+- **Views (data)**: Use `django.core.serializers` to emit JSON/XML for list and by-ID.  
+- **Templates**: `main.html` shows list + “Add” + per-item “Detail”; `product_form.html`; `product_detail.html`.  
+- **Thumbnails**: Use full `https://` image URLs (URLField). Fixed existing items via Admin/Shell.  
+- **Verification**: `curl` the 4 endpoints; click through Add/Detail; confirm by-ID works with UUIDs.  
+- **Deploy & docs**: Push, test on prod, capture Postman screenshots for JSON/XML list and by-ID.
+
+6) Do you have any feedback for the teaching assistants for Tutorial 2?
+The teaching assistant was helpful by providing a zoom meeting and breakout room for us to ask questions. I hope next time, there won't be any error in the tutorial file that just got revised during out tutorial session, so it is more convenient for everyone, including the TAs.
+
+7) Postman Results
+
+**All products (JSON)**  
+![JSON list](docs/postman-products-json-list.png)
+
+**All products (XML)**  
+![XML list](docs/postman-products-xml-list.png)
+
+**Single product by ID (JSON)**  
+![JSON by ID](docs/postman-product-json-by-id.png)
+
+**Single product by ID (XML)**  
+![XML by ID](docs/postman-product-xml-by-id.png)
