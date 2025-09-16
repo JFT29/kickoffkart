@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-gg1)5c1dmie^31s=wi)o@w+2@v+df_8f_h0=s6*mst&fvehn6e
 PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "https://pbp.cs.ui.ac.id/juansao.fortunio/kickoffkart"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "juansao-fortunio-kickoffkart.pbp.cs.ui.ac.id"]
 
 # Application definition
 
@@ -82,26 +82,25 @@ WSGI_APPLICATION = 'kickoffkart.wsgi.application'
 
 # Database configuration
 if PRODUCTION:
-    # Production: use PostgreSQL with credentials from environment variables
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST'),
-            'PORT': os.getenv('DB_PORT'),
-            'OPTIONS': {
-                'options': f"-c search_path={os.getenv('SCHEMA', 'public')}"
-            }
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "OPTIONS": {
+                # important if your PWS uses a non-default schema
+                "options": f"-c search_path={os.getenv('SCHEMA', 'public')}"
+            },
         }
     }
 else:
-    # Development: use SQLite
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 
@@ -155,3 +154,7 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Media files (uploaded content)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

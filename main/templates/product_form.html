@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-3">Add Product</h2>
+  <form method="post" enctype="multipart/form-data" class="needs-validation">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="d-flex gap-2 mt-3">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{% url 'main:show_main' %}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
