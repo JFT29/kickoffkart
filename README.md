@@ -261,6 +261,4 @@ Bottom line: use **sessions** for sensitive server state; if you must use cookie
 - **Access control (Phase 3):** Applied `@login_required` to `show_main`, `add_product`, and `product_detail`; supported `?next=` so users return to their intended page post-login.  
 - **Ownership link (Phase 4):** Added `user = ForeignKey(User, ...)` to `Product`; in `add_product`, saved `request.user` as owner; filtered `show_main` with `Product.objects.filter(user=request.user)` so each user sees only their items.  
 - **Data seeding (Phase 5):** Created two accounts (Andi and Budi) and seeded 3 products each with HTTPS thumbnails; verified isolation by logging in as each user.  
-- **Deploy (Phase 6):** Merged branch to `master`, pushed to PWS, ran `migrate`, and re-seeded users/products on PWS; confirmed auth flow, cookie display, and ownership filtering match localhost.
-
-This mirrors the practices from Tutorial 3 while adapting them to KickoffKart’s models, pages, and deployment setup.
+- **Deploy (Phase 6):** Merged branch to `master`, pushed to PWS, ran `migrate`; confirmed auth flow, cookie display, and ownership filtering match localhost.
