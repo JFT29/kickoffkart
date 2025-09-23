@@ -198,3 +198,69 @@ I hope next time, there won't be any error in the tutorial file that just got re
 
 **Single product by ID (XML)**
 ![XML by ID](docs/postman-product-xml-by-id.png)
+
+---
+
+## KickoffKart — Assignment 4 (Authentication, Sessions & Ownership)
+
+### 1) What is Django’s `AuthenticationForm`? Advantages & disadvantages
+`AuthenticationForm` (from `django.contrib.auth.forms`) is a built-in form for logging in existing users. It validates a username and password against Django’s authentication backends and surfaces appropriate errors (e.g., “invalid credentials”, “inactive account”).
+
+**Advantages**
+- **Secure & battle-tested:** Uses Django’s auth system (password hashing, backend checks).
+- **Fast to integrate:** Ready-to-use; pairs naturally with `login()` and `AuthenticationMiddleware`.
+- **Good error handling & i18n:** Standardized messages and translation support.
+
+**Disadvantages**
+- **Username-centric by default:** Email/phone logins need customization or a custom form.
+- **Styling is minimal:** You must add your own HTML/CSS (or crispy-forms) for UX.
+- **No rate limiting / captcha built-in:** You must add throttling or captcha yourself.
+
+---
+
+### 2) Authentication vs authorization; how Django implements them
+- **Authentication** answers *“Who are you?”*  
+  Django authenticates via **authentication backends** and the **session**. On success, `login(request, user)` persists the user’s ID in the session; `request.user` becomes a `User` (or `AnonymousUser`).
+- **Authorization** answers *“What are you allowed to do?”*  
+  Django provides **permissions** and **groups**, decorators like `@login_required` and `@permission_required`, and per-view/per-object checks in code (e.g., verifying ownership before acting).
+
+In practice: we authenticate with `AuthenticationForm` + `login()`, then authorize with `@login_required` on views and (optionally) permission/ownership checks.
+
+---
+
+### 3) Sessions vs cookies for storing web app state — benefits & drawbacks
+- **Sessions (server-side, keyed by a cookie `sessionid`):**  
+  **Benefits:** Sensitive data isn’t stored on the client; larger payloads; easy invalidation/rotation.  
+  **Drawbacks:** Requires a server/session store (DB/Cache); adds read/write overhead; needs shared store in multi-server deployments.
+- **Cookies (client-side):**  
+  **Benefits:** Simple, stateless on the server; great for small, non-sensitive flags (e.g., UI preferences).  
+  **Drawbacks:** Size limits; visible to the client; vulnerable to tampering/theft without signing and proper flags; not suited for secrets.
+
+In this assignment we used a **cookie** (`last_login`) only for a harmless display value, while real auth state lives in the **session**.
+
+---
+
+### 4) Are cookies secure by default? Risks & how Django mitigates them
+Cookies aren’t secure by default. Risks include **theft via XSS**, **CSRF**, and **tampering**.
+
+**Django mitigations**
+- **CSRF protection**: verified token for state-changing requests.
+- **Cookie flags**: `HttpOnly` (hide from JS), `Secure` (HTTPS only), `SameSite` (CSRF reduction).  
+  Configurable via `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SESSION_COOKIE_SAMESITE`, `CSRF_COOKIE_SAMESITE`.
+- **Signing**: Session cookies are signed; `django.core.signing` supports signed cookies for custom data.
+- **Session rotation**: Best practice to rotate session on privilege changes.
+
+Bottom line: use **sessions** for sensitive server state; if you must use cookies, sign/encrypt and set strict flags.
+
+---
+
+### 5) How I implemented the checklist (step-by-step)
+- **Settings (Phase 0):** Verified `INSTALLED_APPS`/`MIDDLEWARE` include auth, sessions, messages; set `LOGIN_URL`, `LOGIN_REDIRECT_URL`, `LOGOUT_REDIRECT_URL`.  
+- **Auth pages (Phase 1):** Added URLs `/register`, `/login`, `/logout`; implemented `register` (`UserCreationForm`), `login_user` (`AuthenticationForm` + `login()`), `logout_user` (`logout()`); created `login.html` and `register.html`; navbar toggles links based on `user.is_authenticated`.  
+- **Cookie display (Phase 2):** After successful login, set a `last_login` cookie (`httponly`, `samesite='Lax'`) and showed it on the main page; deleted it on logout.  
+- **Access control (Phase 3):** Applied `@login_required` to `show_main`, `add_product`, and `product_detail`; supported `?next=` so users return to their intended page post-login.  
+- **Ownership link (Phase 4):** Added `user = ForeignKey(User, ...)` to `Product`; in `add_product`, saved `request.user` as owner; filtered `show_main` with `Product.objects.filter(user=request.user)` so each user sees only their items.  
+- **Data seeding (Phase 5):** Created two accounts (Andi and Budi) and seeded 3 products each with HTTPS thumbnails; verified isolation by logging in as each user.  
+- **Deploy (Phase 6):** Merged branch to `master`, pushed to PWS, ran `migrate`, and re-seeded users/products on PWS; confirmed auth flow, cookie display, and ownership filtering match localhost.
+
+This mirrors the practices from Tutorial 3 while adapting them to KickoffKart’s models, pages, and deployment setup.
