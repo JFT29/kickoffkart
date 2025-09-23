@@ -7,6 +7,10 @@
   <div class="card shadow-sm">
     <div class="card-body">
       <h3 class="card-title mb-3">{{ product.name }}</h3>
+      
+      {% if product.user %}
+        <p class="text-muted small mb-2">Owner: {{ product.user.username }}</p>
+      {% endif %}
 
       {% if product.thumbnail %}
         <div class="mb-3">
