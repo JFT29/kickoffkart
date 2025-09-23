@@ -10,6 +10,10 @@
         <a class="btn btn-primary" href="{% url 'main:add_product' %}">Add</a>
       </div>
     </div>
+    
+    {% if user.is_authenticated and last_login %}
+      <p class="text-muted small mb-3">Last login: {{ last_login }}</p>
+    {% endif %}
 
     {% if products %}
       <div class="row g-3">

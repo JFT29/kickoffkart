@@ -3,9 +3,17 @@ from django.http import HttpResponse, JsonResponse, Http404
 from django.core import serializers
 from .models import Product
 from .forms import ProductForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm 
+from django.contrib.auth import authenticate, login, logout 
+from django.contrib import messages
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 
+@login_required(login_url="main:login")
 def show_main(request):
-    products = Product.objects.all().order_by("-is_featured", "name")
+    products = Product.objects.filter(user=request.user).order_by("-is_featured", "name")
+    last_login = request.COOKIES.get("last_login")
+    
     context = {
         "app_name": "KickoffKart",
         "your_name": "Juansao Fortunio Tandi",
@@ -13,19 +21,24 @@ def show_main(request):
         "your_npm": "2406365345",
         "total_products": products.count(),
         "products": products,
+        "last_login": last_login,
     }
     return render(request, "main.html", context)
 
+@login_required(login_url="main:login")
 def add_product(request):
     if request.method == "POST":
         form = ProductForm(request.POST or None, request.FILES or None)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            obj.user = request.user
+            obj.save()
             return redirect("main:show_main")
     else:
         form = ProductForm()
     return render(request, "product_form.html", {"form": form})
 
+@login_required(login_url="main:login")
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
     return render(request, "product_detail.html", {"product": product})
@@ -53,3 +66,46 @@ def product_detail_xml(request, pk):
         raise Http404("Product not found")
     data = serializers.serialize("xml", qs)
     return HttpResponse(data, content_type="application/xml")
+
+def register(request):
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Account created. Please log in.")
+            return redirect("main:login")
+    else:
+        form = UserCreationForm()
+    return render(request, "register.html", {"form": form})
+
+def login_user(request):
+    if request.method == "POST":
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()  # already authenticated by the form
+            login(request, user)
+            
+            # Check for next parameter
+            next_url = request.GET.get("next")
+            if next_url:
+                response = redirect(next_url)
+            else:
+                response = redirect("main:show_main")
+            
+            # Set the last_login cookie
+            response.set_cookie(
+                "last_login",
+                timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
+                httponly=True,           # safer: cookie not accessible by JS
+                samesite="Lax",          # sensible default; keep if unsure
+            )
+            return response
+    else:
+        form = AuthenticationForm()
+    return render(request, "login.html", {"form": form})
+
+def logout_user(request):
+    logout(request)
+    response = redirect("main:login")
+    response.delete_cookie("last_login")
+    return response
