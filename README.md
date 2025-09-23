@@ -323,3 +323,4 @@ Responsive navbar: Added a centered category menu and collapsible navbar for sma
 Responsive layout: Verified that all product cards and pages adapt to mobile and desktop screen widths.
 
 Testing: Confirmed edit/delete behavior, filtered views, and responsiveness for both user accounts (Andi & Budi).
+- **Deploy (Phase 6):** Merged branch to `master`, pushed to PWS, ran `migrate`; confirmed auth flow, cookie display, and ownership filtering match localhost.
