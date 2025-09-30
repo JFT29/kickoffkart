@@ -324,3 +324,65 @@ Responsive layout: Verified that all product cards and pages adapt to mobile and
 
 Testing: Confirmed edit/delete behavior, filtered views, and responsiveness for both user accounts (Andi & Budi).
 - **Deploy (Phase 6):** Merged branch to `master`, pushed to PWS, ran `migrate`; confirmed auth flow, cookie display, and ownership filtering match localhost.
+- **Deploy (Phase 6):** Merged branch to `master`, pushed to PWS, ran `migrate`, and re-seeded users/products on PWS; confirmed auth flow, cookie display, and ownership filtering match localhost.
+
+---
+
+### KickoffKart — Assignment 5 (Edit/Delete & UI/Responsive)
+1) How CSS selectors determine which rules apply (specificity & cascade)
+
+When multiple CSS rules target the same element, browsers resolve which one applies through specificity and the cascade order.
+The general priority is:
+Inline styles > IDs > Classes, attributes, pseudo-classes > Elements.
+If two selectors have equal specificity, the one written later in the stylesheet takes precedence.
+Example: #title {} overrides .title {}, which overrides h1 {}.
+This ensures flexible styling but requires careful rule structuring to avoid conflicts.
+
+2) Why responsive design matters
+
+Responsive design ensures that websites remain usable and visually balanced across different devices, from desktops to smartphones.
+It improves accessibility, readability, and navigation by automatically adjusting layouts based on screen size.
+Good example: a product grid that switches from 4 columns → 2 columns → 1 column on smaller screens.
+Bad example: a fixed-width layout forcing users to scroll horizontally on mobile.
+In KickoffKart, responsiveness was achieved using Bootstrap’s grid and flex utilities, so the UI stays consistent on all screens.
+
+3) CSS box model (margin, border, padding) and how we used it
+
+The CSS box model defines how space and size are calculated for each element:
+
+Content: the main area for text or images.
+
+Padding: space inside the border.
+
+Border: the outline around the element.
+
+Margin: space outside the border separating elements.
+
+In this project, Bootstrap’s spacing utilities (p-3, mb-2, mt-4, etc.) and card borders were used to maintain balanced spacing and prevent overlapping UI components.
+
+4) Layout systems: Flexbox vs Grid
+
+Flexbox is one-dimensional, ideal for arranging items in a row or column (e.g., navbar, button rows).
+
+Grid is two-dimensional, useful for building structured layouts with rows and columns (e.g., product gallery).
+KickoffKart uses:
+
+Bootstrap Grid for responsive product cards.
+
+Flexbox utilities (d-flex, justify-content-between, align-items-center) for navigation bars and card content alignment.
+
+5) How I implemented the checklist step-by-step
+
+Edit/Delete (owner-only): Added product_edit and product_delete views, with ownership checks (product.user == request.user).
+The edit form uses a ModelForm bound to the selected product; delete runs via POST and redirects afterward.
+
+Buttons: Added “Edit” and “Delete” buttons on each product card, visible only to the product owner.
+
+UI redesign: Used Bootstrap’s cards, spacing, and shadows for a clean, modern look.
+Improved the login, register, and add/edit forms with consistent styling.
+
+Responsive navbar: Added a centered category menu and collapsible navbar for smaller devices.
+
+Responsive layout: Verified that all product cards and pages adapt to mobile and desktop screen widths.
+
+Testing: Confirmed edit/delete behavior, filtered views, and responsiveness for both user accounts (Andi & Budi).
