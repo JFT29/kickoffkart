@@ -1,5 +1,5 @@
 ﻿from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, JsonResponse, Http404
+from django.http import HttpResponse, JsonResponse, Http404, HttpResponseForbidden
 from django.core import serializers
 from .models import Product
 from .forms import ProductForm
@@ -109,3 +109,37 @@ def logout_user(request):
     response = redirect("main:login")
     response.delete_cookie("last_login")
     return response
+
+@login_required(login_url="main:login")
+def product_edit(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if product.user != request.user:
+        messages.error(request, "You are not allowed to edit this item.")
+        return HttpResponseForbidden("Forbidden")
+    
+    if request.method == "POST":
+        form = ProductForm(request.POST, instance=product)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Product updated successfully.")
+            return redirect("main:show_main")
+    else:
+        form = ProductForm(instance=product)
+    
+    return render(request, "product_edit.html", {"form": form, "product": product})
+
+@login_required(login_url="main:login")
+def product_delete(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if product.user != request.user:
+        messages.error(request, "You are not allowed to delete this item.")
+        return HttpResponseForbidden("Forbidden")
+    
+    if request.method == "POST":
+        product.delete()
+        messages.success(request, "Product deleted successfully.")
+        return redirect("main:show_main")
+    
+    # If GET, redirect back to detail (we do not delete via GET)
+    messages.warning(request, "Delete must be submitted as a POST request.")
+    return redirect("main:product_detail", pk=pk)

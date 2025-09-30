@@ -36,6 +36,15 @@
                   <span class="price">Rp{{ p.price }}</span>
                 </div>
                 <a class="btn btn-outline-secondary" href="{% url 'main:product_detail' pk=p.pk %}">Detail</a>
+                {% if request.user.is_authenticated and p.user == request.user %}
+                  <div class="d-flex gap-2 mt-2">
+                    <a class="btn btn-outline-primary btn-sm" href="{% url 'main:product_edit' pk=p.pk %}">Edit</a>
+                    <form method="post" action="{% url 'main:product_delete' pk=p.pk %}" onsubmit="return confirm('Delete this product?');">
+                      {% csrf_token %}
+                      <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                    </form>
+                  </div>
+                {% endif %}
               </div>
             </div>
           </div>

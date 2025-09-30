@@ -10,6 +10,10 @@ urlpatterns = [
     path("products/add/", views.add_product, name="add_product"),
     path("products/<uuid:pk>/", views.product_detail, name="product_detail"),
 
+    # New routes for edit and delete
+    path("products/<uuid:pk>/edit/", views.product_edit, name="product_edit"),
+    path("products/<uuid:pk>/delete/", views.product_delete, name="product_delete"),
+
     # Assignment 3 data-delivery endpoints
     path("products/json/", views.product_list_json, name="product_list_json"),
     path("products/xml/", views.product_list_xml, name="product_list_xml"),

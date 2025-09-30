@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="h4 mb-3">Edit Product: {{ product.name }}</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Save changes</button>
+      <a class="btn btn-secondary" href="{% url 'main:product_detail' pk=product.pk %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

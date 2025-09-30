@@ -1,24 +1,27 @@
 {% extends "base.html" %}
-{% load static %}
-
 {% block content %}
 <div class="container py-4">
   <a class="btn btn-link p-0 mb-3" href="{% url 'main:show_main' %}">← Back to list</a>
   <div class="card shadow-sm">
     <div class="card-body">
-      <h3 class="card-title mb-3">{{ product.name }}</h3>
-      
+      <h3 class="card-title mb-2">{{ product.name }}</h3>
       {% if product.user %}
         <p class="text-muted small mb-2">Owner: {{ product.user.username }}</p>
       {% endif %}
-
+      {% if request.user.is_authenticated and product.user == request.user %}
+        <div class="d-flex gap-2 mb-3">
+          <a class="btn btn-outline-primary btn-sm" href="{% url 'main:product_edit' pk=product.pk %}">Edit</a>
+          <form method="post" action="{% url 'main:product_delete' pk=product.pk %}" onsubmit="return confirm('Delete this product?');">
+            {% csrf_token %}
+            <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+          </form>
+        </div>
+      {% endif %}
       {% if product.thumbnail %}
         <div class="mb-3">
-          {# If thumbnail is a static path string, keep using it #}
           <img src="{{ product.thumbnail }}" alt="{{ product.name }}" class="img-fluid rounded">
         </div>
       {% endif %}
-
       <p class="mb-2"><strong>Price:</strong> Rp{{ product.price }}</p>
       <p class="mb-2"><strong>Category:</strong> {{ product.category }}</p>
       <p class="mb-2"><strong>Featured:</strong> {{ product.is_featured|yesno:"Yes,No" }}</p>
