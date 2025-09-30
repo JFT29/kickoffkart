@@ -2,58 +2,61 @@
 {% load static %}
 
 {% block content %}
-  <main class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<main class="container py-4">
+  <div class="d-flex justify-content-between align-items-start align-items-md-center flex-column flex-md-row mb-3">
+    <div>
       <h2 class="h4 m-0">Products</h2>
-      <div class="d-flex align-items-center">
-        <span class="text-muted small me-3">Total: {{ total_products }}</span>
-        <a class="btn btn-primary" href="{% url 'main:add_product' %}">Add</a>
-      </div>
+      {% if user.is_authenticated and last_login %}
+        <p class="text-muted small mb-0">Last login: {{ last_login }}</p>
+      {% endif %}
     </div>
-    
-    {% if user.is_authenticated and last_login %}
-      <p class="text-muted small mb-3">Last login: {{ last_login }}</p>
-    {% endif %}
+    <div class="mt-3 mt-md-0">
+      <a class="btn btn-primary" href="{% url 'main:add_product' %}">Add Product</a>
+    </div>
+  </div>
 
-    {% if products %}
-      <div class="row g-3">
-        {% for p in products %}
-          <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-            <div class="card h-100 shadow-sm">
-              {% if p.thumbnail %}
-                <img src="{{ p.thumbnail }}" class="card-img-top" alt="{{ p.name }}">
-              {% endif %}
-              <div class="card-body d-flex flex-column">
-                <div class="d-flex align-items-start justify-content-between mb-2">
-                  <h5 class="card-title mb-0">{{ p.name }}</h5>
-                  {% if p.is_featured %}
-                    <span class="badge badge-featured">Featured</span>
-                  {% endif %}
-                </div>
-                <p class="card-text text-muted small flex-grow-1">{{ p.description|truncatechars:120 }}</p>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="badge text-bg-secondary">{{ p.category }}</span>
-                  <span class="price">Rp{{ p.price }}</span>
-                </div>
-                <a class="btn btn-outline-secondary" href="{% url 'main:product_detail' pk=p.pk %}">Detail</a>
+  {% if products %}
+    <div class="row g-3">
+      {% for p in products %}
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+          <div class="card h-100 shadow-sm">
+            {% if p.thumbnail %}
+              <img src="{{ p.thumbnail }}" class="card-img-top" alt="{{ p.name }}">
+            {% endif %}
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-2">
+                <h5 class="card-title mb-0">{{ p.name }}</h5>
+                {% if p.is_featured %}
+                  <span class="badge badge-featured">Featured</span>
+                {% endif %}
+              </div>
+              <p class="card-text text-muted small flex-grow-1">{{ p.description|truncatechars:120 }}</p>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge text-bg-secondary">{{ p.category }}</span>
+                <span class="price">Rp{{ p.price }}</span>
+              </div>
+              <div class="mt-auto">
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'main:product_detail' pk=p.pk %}">Detail</a>
                 {% if request.user.is_authenticated and p.user == request.user %}
-                  <div class="d-flex gap-2 mt-2">
-                    <a class="btn btn-outline-primary btn-sm" href="{% url 'main:product_edit' pk=p.pk %}">Edit</a>
-                    <form method="post" action="{% url 'main:product_delete' pk=p.pk %}" onsubmit="return confirm('Delete this product?');">
-                      {% csrf_token %}
-                      <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
-                    </form>
-                  </div>
+                  <a class="btn btn-outline-primary btn-sm ms-1" href="{% url 'main:product_edit' pk=p.pk %}">Edit</a>
+                  <form method="post" action="{% url 'main:product_delete' pk=p.pk %}" class="d-inline" onsubmit="return confirm('Delete this product?');">
+                    {% csrf_token %}
+                    <button class="btn btn-outline-danger btn-sm ms-1" type="submit">Delete</button>
+                  </form>
                 {% endif %}
               </div>
             </div>
           </div>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="alert alert-info">
-        No products yet.
-      </div>
-    {% endif %}
-  </main>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-5">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/3/3a/OOjs_UI_icon_box.svg" alt="Empty" style="height:80px" class="mb-3 opacity-75">
+      <h3 class="h5">No products yet</h3>
+      <p class="text-muted">Start by adding your first product.</p>
+      <a class="btn btn-primary" href="{% url 'main:add_product' %}">Add Product</a>
+    </div>
+  {% endif %}
+</main>
 {% endblock %}

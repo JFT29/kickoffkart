@@ -1,12 +1,22 @@
 ﻿{% extends "base.html" %}
 {% block content %}
-
-<div class="container py-4">
-    <h2>Login</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Login</button>
-    </form>
+<div class="container py-4" style="max-width:560px;">
+  <h2 class="h4 mb-3">Login</h2>
+  <form method="post" class="needs-validation" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+        {% for err in field.errors %}<div class="invalid-feedback d-block">{{ err }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">Login</button>
+      <a href="{% url 'main:register' %}" class="btn btn-outline-secondary">Register</a>
+    </div>
+  </form>
 </div>
 {% endblock %}
