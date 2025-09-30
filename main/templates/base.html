@@ -10,25 +10,54 @@
     .price { font-weight: 600; }
     .badge-featured { background: #ffc107; }
     .card-img-top { object-fit: cover; height: 160px; }
+    .navbar .nav-link.active {
+      font-weight: 600;
+      color: #0d6efd !important;
+      border-bottom: 2px solid #0d6efd;
+    }
   </style>
 </head>
 <body class="bg-light d-flex flex-column min-vh-100">
 
-  <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+  <!-- Desktop-style centered categories navbar -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom py-2">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="{% url 'main:show_main' %}">KickoffKart</a>
+      <!-- Left: Brand -->
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-1" href="{% url 'main:show_main' %}">
+        <span class="text-success">Kickoff</span>Kart
+      </a>
+
+      <!-- Mobile toggler -->
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#kkNav" aria-controls="kkNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
+
+      <!-- Collapsible content -->
       <div class="collapse navbar-collapse" id="kkNav">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item"><a class="nav-link" href="{% url 'main:show_main' %}">Home</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'main:add_product' %}">Add Product</a></li>
-        </ul>
-        <ul class="navbar-nav ms-auto align-items-center gap-2">
-          {% if request.user.is_authenticated %}
+        <!-- Center: Dynamic categories -->
+        <ul class="navbar-nav mx-auto gap-lg-3">
+          <li class="nav-item">
+            <a class="nav-link {% if not request.GET.category %}active{% endif %}" href="{% url 'main:show_main' %}">Home</a>
+          </li>
+          {% for cat in nav_categories %}
             <li class="nav-item">
-              <span class="nav-link disabled">Hello, {{ request.user.username }}</span>
+              <a
+                class="nav-link {% if request.GET.category == cat %}active{% endif %}"
+                href="{% url 'main:show_main' %}?category={{ cat|urlencode }}"
+              >{{ cat }}</a>
+            </li>
+          {% empty %}
+            <li class="nav-item">
+              <a class="nav-link disabled" href="#">No Categories</a>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <!-- Right: Auth/User block -->
+        <ul class="navbar-nav ms-auto align-items-center gap-3">
+          {% if request.user.is_authenticated %}
+            <li class="nav-item text-end">
+              <div class="small fw-semibold">{{ request.user.username }}</div>
             </li>
             <li class="nav-item">
               <form method="post" action="{% url 'main:logout' %}" class="m-0">
