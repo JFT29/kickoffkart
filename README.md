@@ -386,3 +386,60 @@ Responsive navbar: Added a centered category menu and collapsible navbar for sma
 Responsive layout: Verified that all product cards and pages adapt to mobile and desktop screen widths.
 
 Testing: Confirmed edit/delete behavior, filtered views, and responsiveness for both user accounts (Andi & Budi).
+
+---
+
+### KickoffKart — Assignment 6 (AJAX & Fetch)
+1) What is the difference between synchronous request and asynchronous request?
+
+Synchronous: the browser waits for the server to finish processing and returns a full response before the user can interact again. The UI blocks and typically reloads the page (or a full template re-render) after each request.
+
+Asynchronous: the browser sends a request in the background (e.g., via fetch()), continues to be interactive, and updates only the necessary parts of the page when the response arrives. No full page reload.
+
+2) How does AJAX work in Django (request–response flow)?
+
+Browser JS (e.g., fetch() from a button or modal form) sends a request to a Django URL (often returning JSON).
+
+Django View validates method, authentication, and data; performs business logic (create/update/delete/query).
+
+The view returns a JsonResponse (status + data or errors).
+
+Browser JS reads the JSON, then updates the DOM (insert/edit/remove cards, update navbar state, close modals) without reloading the page.
+
+For protected endpoints, CSRF (cookie → header) and session cookies are included to authenticate and authorize the request.
+
+3) What are the advantages of using AJAX compared to regular rendering in Django?
+
+No full reload → faster perceived performance and lower bandwidth.
+
+Finer-grained updates → update only what changed (a card, a counter, a toast).
+
+Smoother flows → inline forms/modals for add/edit/delete and auth.
+
+Separation of concerns → Django focuses on JSON APIs; the browser handles view-model and rendering deltas.
+
+Better UX telemetry → easier to show inline validation errors and success states.
+
+4) How do you ensure security when using AJAX for Login and Register features in Django?
+
+CSRF protection: include the csrftoken from cookies in the X-CSRFToken header for all unsafe methods (POST/PUT/PATCH/DELETE).
+
+HTTPS in production: protects credentials and session cookies in transit; set SESSION_COOKIE_SECURE and CSRF_COOKIE_SECURE.
+
+Django Auth: use authenticate() + login() and UserCreationForm-like validation (password rules, uniqueness, cleaned data).
+
+Least privilege in views: check request.user.is_authenticated, ownership, and method (@require_POST, login_required).
+
+Sanitize outputs: return only necessary fields in JSON; never echo raw passwords; avoid leaking internal errors.
+
+Same-origin: use credentials: 'same-origin' in fetch() so cookies aren’t exposed cross-site; keep CORS closed unless deliberately configured.
+
+5) How does AJAX affect user experience (UX) on websites?
+
+Responsiveness: actions feel instantaneous (no flash of white page).
+
+Continuity: modals stay open to show inline errors; lists update in place.
+
+Perceived reliability: granular error handling (toasts/tooltips) gives clear feedback.
+
+Flow retention: users remain “in context” while data changes, reducing cognitive load and drop-offs.
