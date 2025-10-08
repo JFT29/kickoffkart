@@ -1,16 +1,30 @@
 ﻿# main/views.py
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse, JsonResponse, Http404, HttpResponseForbidden
+from django.http import (
+    HttpResponse,
+    JsonResponse,
+    Http404,
+    HttpResponseForbidden,
+)
 from django.core import serializers
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
+from django.views.decorators.http import require_POST
+from django.forms import ModelForm
+from django.middleware.csrf import get_token
 
 from .models import Product
 from .forms import ProductForm
+
+
+class ProductAjaxForm(ModelForm):
+    class Meta:
+        model = Product
+        fields = ["name", "price", "description", "thumbnail", "category", "is_featured"]
 
 
 def product_to_dict(p, request):
@@ -25,21 +39,27 @@ def product_to_dict(p, request):
         "is_featured": p.is_featured,
         "urls": {
             "detail": reverse("main:product_detail", kwargs={"pk": p.pk}),
-            "edit": reverse("main:product_edit", kwargs={"pk": p.pk}) if hasattr(p, "user") and p.user_id == request.user.id else None,
-            "delete": reverse("main:product_delete", kwargs={"pk": p.pk}) if hasattr(p, "user") and p.user_id == request.user.id else None,
-        }
+            "edit": reverse("main:product_edit", kwargs={"pk": p.pk})
+            if hasattr(p, "user") and p.user_id == request.user.id
+            else None,
+            "delete": reverse("main:product_delete", kwargs={"pk": p.pk})
+            if hasattr(p, "user") and p.user_id == request.user.id
+            else None,
+        },
     }
 
 
 @login_required(login_url="main:login")
 def show_main(request):
-    products_qs = Product.objects.filter(user=request.user).order_by("-is_featured", "name")
+    products_qs = Product.objects.filter(user=request.user).order_by(
+        "-is_featured", "name"
+    )
 
     category = request.GET.get("category")
     if category:
         products_qs = products_qs.filter(category=category)
 
-    # If ajax=1 (or any truthy value), return JSON instead of HTML (lightweight reuse)
+    # Optional lightweight JSON path (?ajax=1)
     if request.GET.get("ajax"):
         data = list(
             products_qs.values(
@@ -131,7 +151,7 @@ def product_delete(request, pk):
     return redirect("main:product_detail", pk=pk)
 
 
-# Data delivery: list (JSON/XML)
+# Data delivery: list (JSON/XML) — global (not owner-filtered)
 def product_list_json(request):
     data = serializers.serialize("json", Product.objects.all())
     return HttpResponse(data, content_type="application/json")
@@ -193,6 +213,8 @@ def login_user(request):
             return response
     else:
         form = AuthenticationForm()
+    # Ensure CSRF token available for front-end scripts if needed
+    get_token(request)
     return render(request, "login.html", {"form": form})
 
 
@@ -203,7 +225,7 @@ def logout_user(request):
     return response
 
 
-# API endpoints
+# API read endpoints (owner-scoped)
 @login_required
 def api_product_list(request):
     qs = Product.objects.filter(user=request.user).order_by("-is_featured", "name")
@@ -218,3 +240,40 @@ def api_product_list(request):
 def api_product_detail(request, pk):
     p = get_object_or_404(Product, pk=pk, user=request.user)
     return JsonResponse(product_to_dict(p, request), status=200)
+
+
+# API write endpoints
+@login_required
+@require_POST
+def api_product_create(request):
+    form = ProductAjaxForm(request.POST)
+    if form.is_valid():
+        p = form.save(commit=False)
+        if hasattr(p, "user_id"):
+            p.user = request.user
+        p.save()
+        return JsonResponse(
+            {"ok": True, "product": product_to_dict(p, request)}, status=201
+        )
+    return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+
+
+@login_required
+@require_POST
+def api_product_update(request, pk):
+    p = get_object_or_404(Product, pk=pk, user=request.user)
+    form = ProductAjaxForm(request.POST, instance=p)
+    if form.is_valid():
+        p = form.save()
+        return JsonResponse(
+            {"ok": True, "product": product_to_dict(p, request)}, status=200
+        )
+    return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+
+
+@login_required
+@require_POST
+def api_product_delete(request, pk):
+    p = get_object_or_404(Product, pk=pk, user=request.user)
+    p.delete()
+    return JsonResponse({"ok": True}, status=200)

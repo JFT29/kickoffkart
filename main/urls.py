@@ -18,9 +18,14 @@ urlpatterns = [
     path("products/json/<uuid:pk>/", views.product_detail_json, name="product_detail_json"),
     path("products/xml/<uuid:pk>/", views.product_detail_xml, name="product_detail_xml"),
 
-    # API (JSON) endpoints
+    # API (read) endpoints
     path("api/products/", views.api_product_list, name="api_product_list"),
     path("api/products/<uuid:pk>/", views.api_product_detail, name="api_product_detail"),
+
+    # API write endpoints
+    path("api/products/create/", views.api_product_create, name="api_product_create"),
+    path("api/products/<uuid:pk>/update/", views.api_product_update, name="api_product_update"),
+    path("api/products/<uuid:pk>/delete/", views.api_product_delete, name="api_product_delete"),
 
     # Auth
     path("register/", views.register, name="register"),
