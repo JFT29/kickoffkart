@@ -14,13 +14,33 @@ from .forms import ProductForm
 
 @login_required(login_url="main:login")
 def show_main(request):
-    # Base queryset: only this user's products
     products_qs = Product.objects.filter(user=request.user).order_by("-is_featured", "name")
 
-    # Optional category filter from query string
     category = request.GET.get("category")
     if category:
         products_qs = products_qs.filter(category=category)
+
+    # If ajax=1 (or any truthy value), return JSON instead of HTML (lightweight reuse)
+    if request.GET.get("ajax"):
+        data = list(
+            products_qs.values(
+                "id",
+                "name",
+                "price",
+                "category",
+                "description",
+                "thumbnail",
+                "is_featured",
+            )
+        )
+        return JsonResponse(
+            {
+                "count": len(data),
+                "category": category,
+                "products": data,
+            },
+            safe=False,
+        )
 
     last_login = request.COOKIES.get("last_login")
 
@@ -55,7 +75,6 @@ def add_product(request):
 @login_required(login_url="main:login")
 def product_detail(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    # Ownership not strictly required to view detail (adjust if needed)
     return render(request, "product_detail.html", {"product": product})
 
 
@@ -163,3 +182,24 @@ def logout_user(request):
     response = redirect("main:login")
     response.delete_cookie("last_login")
     return response
+
+
+# API endpoints (JSON) - simple stubs or basic data
+@login_required(login_url="main:login")
+def api_product_list(request):
+    # For now, return only the current user's products
+    products = Product.objects.filter(user=request.user).values(
+        "id", "name", "price", "category", "is_featured"
+    )
+    return JsonResponse(list(products), safe=False)
+
+
+@login_required(login_url="main:login")
+def api_product_detail(request, pk):
+    try:
+        product = Product.objects.values(
+            "id", "name", "price", "category", "description", "thumbnail", "is_featured"
+        ).get(pk=pk, user=request.user)
+    except Product.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+    return JsonResponse(product)
