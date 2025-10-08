@@ -15,14 +15,15 @@
     <div class="mt-3 mt-md-0 d-flex align-items-center">
       <span class="text-muted small me-3">Total: {{ total_products }}</span>
       <button id="btn-refresh" class="btn btn-outline-secondary me-2" type="button">Refresh</button>
-      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalCreate">Add</button>
+      <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalAdd">Add</button>
     </div>
   </div>
 
+  {# Server-rendered fallback (no-JS) #}
   {% if products %}
     <div class="row g-3" data-server-grid>
       {% for p in products %}
-        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3" data-pk="{{ p.pk }}">
           <div class="card h-100 shadow-sm">
             {% if p.thumbnail %}
               <img src="{{ p.thumbnail }}" class="card-img-top" alt="{{ p.name }}">
@@ -39,14 +40,11 @@
                 <span class="badge text-bg-secondary">{{ p.category }}</span>
                 <span class="price">Rp{{ p.price }}</span>
               </div>
-              <div class="mt-auto">
+              <div class="d-flex gap-2">
                 <a class="btn btn-outline-secondary btn-sm" href="{% url 'main:product_detail' pk=p.pk %}">Detail</a>
                 {% if request.user.is_authenticated and p.user == request.user %}
-                  <a class="btn btn-outline-primary btn-sm ms-1" href="{% url 'main:product_edit' pk=p.pk %}">Edit</a>
-                  <form method="post" action="{% url 'main:product_delete' pk=p.pk %}" class="d-inline" onsubmit="return confirm('Delete this product?');">
-                    {% csrf_token %}
-                    <button class="btn btn-outline-danger btn-sm ms-1" type="submit">Delete</button>
-                  </form>
+                  <button class="btn btn-outline-primary btn-sm btn-edit" data-pk="{{ p.pk }}">Edit</button>
+                  <button class="btn btn-outline-danger btn-sm btn-delete" data-pk="{{ p.pk }}">Delete</button>
                 {% endif %}
               </div>
             </div>
@@ -55,38 +53,38 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="alert alert-info" data-server-empty>
+    <div class="alert alert-info mb-4" data-server-empty>
       No products yet.
     </div>
   {% endif %}
 
-  <!-- AJAX containers (initially hidden) -->
+  <!-- Dynamic AJAX grid (initially hidden, will replace server fallback) -->
   <div id="product-loading" class="text-center py-5 d-none">
     <div class="spinner-border" role="status" aria-hidden="true"></div>
     <div class="small text-muted mt-2">Loading products…</div>
   </div>
   <div id="product-error" class="alert alert-danger d-none"></div>
   <div id="product-empty" class="alert alert-info d-none">No products yet.</div>
-  <div id="product-grid" class="row g-3 d-none"></div>
+  <div id="productGrid" class="row g-3 d-none"></div>
 
-  <!-- Create Modal -->
-  <div class="modal fade" id="modalCreate" tabindex="-1" aria-hidden="true">
+  <!-- Add (Create) Modal -->
+  <div class="modal fade" id="modalAdd" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-      <form id="formCreate" class="modal-content" method="post" action="#">
+      <form id="addProductForm" class="modal-content" method="post" action="{% url 'main:add_product' %}">
         {% csrf_token %}
         <div class="modal-header">
           <h5 class="modal-title">Add Product</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div id="createErrors" class="alert alert-danger d-none"></div>
+          <div id="addErrors" class="alert alert-danger d-none"></div>
           <div class="mb-2">
             <label class="form-label">Name</label>
             <input name="name" class="form-control" required>
           </div>
           <div class="mb-2">
             <label class="form-label">Price</label>
-            <input name="price" type="number" class="form-control" min="0" step="1" required>
+            <input name="price" type="number" min="0" step="1" class="form-control" required>
           </div>
           <div class="mb-2">
             <label class="form-label">Thumbnail (URL)</label>
@@ -101,13 +99,13 @@
             <textarea name="description" class="form-control" rows="3"></textarea>
           </div>
           <div class="form-check">
-            <input name="is_featured" id="createIsFeatured" type="checkbox" class="form-check-input">
-            <label for="createIsFeatured" class="form-check-label">Featured</label>
+            <input name="is_featured" id="add_is_featured" type="checkbox" class="form-check-input">
+            <label for="add_is_featured" class="form-check-label">Featured</label>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" type="submit">Save</button>
+          <button id="btnAddSave" class="btn btn-primary" type="submit">Save</button>
         </div>
       </form>
     </div>
@@ -116,287 +114,277 @@
   <!-- Edit Modal -->
   <div class="modal fade" id="modalEdit" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-      <form id="formEdit" class="modal-content" method="post" action="#">
+      <form id="editProductForm" class="modal-content" method="post" action="#">
         {% csrf_token %}
-        <input type="hidden" name="id">
+        <input type="hidden" id="edit_pk" name="pk">
         <div class="modal-header">
           <h5 class="modal-title">Edit Product</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div id="editErrors" class="alert alert-danger d-none"></div>
           <div class="mb-2">
             <label class="form-label">Name</label>
-            <input name="name" class="form-control" required>
+            <input id="edit_name" name="name" class="form-control" required>
           </div>
           <div class="mb-2">
             <label class="form-label">Price</label>
-            <input name="price" type="number" class="form-control" min="0" step="1" required>
+            <input id="edit_price" name="price" type="number" min="0" step="1" class="form-control" required>
           </div>
           <div class="mb-2">
             <label class="form-label">Thumbnail (URL)</label>
-            <input name="thumbnail" type="url" class="form-control" placeholder="https://...">
+            <input id="edit_thumbnail" name="thumbnail" type="url" class="form-control">
           </div>
           <div class="mb-2">
             <label class="form-label">Category</label>
-            <input name="category" class="form-control">
+            <input id="edit_category" name="category" class="form-control">
           </div>
-            <div class="mb-2">
+          <div class="mb-2">
             <label class="form-label">Description</label>
-            <textarea name="description" class="form-control" rows="3"></textarea>
+            <textarea id="edit_description" name="description" class="form-control" rows="3"></textarea>
           </div>
           <div class="form-check">
-            <input name="is_featured" id="editIsFeatured" type="checkbox" class="form-check-input">
-            <label for="editIsFeatured" class="form-check-label">Featured</label>
+            <input id="edit_is_featured" name="is_featured" type="checkbox" class="form-check-input">
+            <label for="edit_is_featured" class="form-check-label">Featured</label>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" type="submit">Update</button>
+          <button id="btnEditSave" class="btn btn-primary" type="submit">Save</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Delete Modal -->
-  <div class="modal fade" id="modalDelete" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <form id="formDelete" class="modal-content" method="post" action="#">
-        {% csrf_token %}
-        <input type="hidden" name="id">
-        <div class="modal-header">
-          <h5 class="modal-title">Delete Product</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-0">Are you sure you want to delete <strong id="deleteName"></strong>?</p>
-          <div id="deleteErrors" class="alert alert-danger d-none mt-2"></div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-danger" type="submit">Delete</button>
-        </div>
-      </form>
-    </div>
-  </div>
+  <!-- Delete confirmation uses native confirm() in script; no dedicated modal required here -->
 
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      function getQueryParam(name) {
+    document.addEventListener('DOMContentLoaded', () => {
+      // Expose loadProducts globally so base nav helpers can call it if needed
+      window.loadProducts = loadProducts;
+
+      const refreshBtn = document.getElementById('btn-refresh');
+      const loadingEl = document.getElementById('product-loading');
+      const errorEl = document.getElementById('product-error');
+      const emptyEl = document.getElementById('product-empty');
+      const ajaxGrid = document.getElementById('productGrid');
+      const serverGrid = document.querySelector('[data-server-grid]');
+      const serverEmpty = document.querySelector('[data-server-empty]');
+
+      const addForm = document.getElementById('addProductForm');
+      const addBtn = document.getElementById('btnAddSave');
+      const editForm = document.getElementById('editProductForm');
+      const editBtn = document.getElementById('btnEditSave');
+
+      function show(el){ el && el.classList.remove('d-none'); }
+      function hide(el){ el && el.classList.add('d-none'); }
+
+      function cardHTML(p) {
+        return `
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3" data-pk="${p.pk}">
+          <div class="card h-100 shadow-sm">
+            ${p.thumbnail ? `<img src="${p.thumbnail}" class="card-img-top" alt="${p.name}">` : ""}
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex align-items-start justify-content-between mb-2">
+                <h5 class="card-title mb-0">${p.name}</h5>
+                ${p.is_featured ? `<span class="badge badge-featured">Featured</span>` : ""}
+              </div>
+              <p class="card-text text-muted small flex-grow-1">${(p.description || "").slice(0,120)}</p>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge text-bg-secondary">${p.category || ''}</span>
+                <span class="price">Rp${p.price}</span>
+              </div>
+              <div class="d-flex gap-2">
+                <a class="btn btn-outline-secondary btn-sm" href="${p.detail_url}">Detail</a>
+                <button class="btn btn-outline-primary btn-sm btn-edit" data-pk="${p.pk}">Edit</button>
+                <button class="btn btn-outline-danger btn-sm btn-delete" data-pk="${p.pk}">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      function getQueryParam(name){
         const params = new URLSearchParams(window.location.search);
         return params.get(name);
       }
 
-      const btnRefresh    = document.getElementById("btn-refresh");
-      const elLoading     = document.getElementById("product-loading");
-      const elError       = document.getElementById("product-error");
-      const elEmpty       = document.getElementById("product-empty");
-      const elGrid        = document.getElementById("product-grid");
-      const serverGrid    = document.querySelector("[data-server-grid]");
-      const serverEmpty   = document.querySelector("[data-server-empty]");
-
-      function show(el) { el && el.classList.remove("d-none"); }
-      function hide(el) { el && el.classList.add("d-none"); }
-
-      function productCardHTML(p) {
-        const badge = p.is_featured ? '<span class="badge badge-featured">Featured</span>' : '';
-        const price = `Rp${p.price}`;
-        const thumb = p.thumbnail ? `<img src="${p.thumbnail}" class="card-img-top" alt="${p.name}">` : "";
-        const category = p.category ? `<span class="badge text-bg-secondary">${p.category}</span>` : "";
-        const editBtn = p.urls.edit ? `<button class="btn btn-outline-primary btn-sm js-edit" data-id="${p.id}">Edit</button>` : "";
-        const deleteBtn = p.urls.delete ? `<button class="btn btn-outline-danger btn-sm ms-2 js-delete" data-id="${p.id}" data-name="${p.name}">Delete</button>` : "";
-
-        return `
-          <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-            <div class="card h-100 shadow-sm">
-              ${thumb}
-              <div class="card-body d-flex flex-column">
-                <div class="d-flex align-items-start justify-content-between mb-2">
-                  <h5 class="card-title mb-0">${p.name}</h5>
-                  ${badge}
-                </div>
-                <p class="card-text text-muted small flex-grow-1">${(p.description || "").slice(0,120)}</p>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  ${category}
-                  <span class="price">${price}</span>
-                </div>
-                <div class="d-flex">
-                  <a class="btn btn-outline-secondary btn-sm" href="${p.urls.detail}">Detail</a>
-                  ${editBtn}
-                  ${deleteBtn}
-                </div>
-              </div>
-            </div>
-          </div>`;
-      }
-
       async function loadProducts() {
-        const category = getQueryParam("category");
+        const category = getQueryParam('category');
         const url = new URL("{% url 'main:api_product_list' %}", window.location.origin);
         if (category) url.searchParams.set("category", category);
 
+        // Hide server fallback when AJAX active
         hide(serverGrid);
         hide(serverEmpty);
 
-        hide(elError); hide(elEmpty); hide(elGrid);
-        show(elLoading);
+        hide(errorEl); hide(emptyEl); hide(ajaxGrid);
+        show(loadingEl);
 
         try {
-          const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const data = await resp.json();
-          const products = Array.isArray(data.products) ? data.products : [];
-
-          elGrid.innerHTML = products.map(productCardHTML).join("");
-          hide(elLoading);
-          if (products.length === 0) {
-            show(elEmpty);
+          const data = await jsonFetch(url.toString());
+          const list = data.products || [];
+          ajaxGrid.innerHTML = list.map(cardHTML).join('');
+          hide(loadingEl);
+          if (!list.length) {
+            show(emptyEl);
           } else {
-            show(elGrid);
+            show(ajaxGrid);
           }
         } catch (err) {
-          hide(elLoading); hide(elGrid); hide(elEmpty);
-          elError.textContent = "Failed to load products. Please try again.";
-          show(elError);
-          console.error(err);
+          hide(loadingEl); hide(ajaxGrid); hide(emptyEl);
+          errorEl.textContent = "Failed to load products: " + err.message;
+          show(errorEl);
+          showToast("Load products failed");
         }
       }
 
-      if (btnRefresh) btnRefresh.addEventListener("click", loadProducts);
-      loadProducts();
+      if (refreshBtn) refreshBtn.addEventListener('click', loadProducts);
 
-      function getCookie(name) {
-        const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-        return m ? m.pop() : '';
-      }
-      const CSRF = getCookie('csrftoken');
-
-      const modalCreate = new bootstrap.Modal(document.getElementById('modalCreate'));
-      const modalEdit   = new bootstrap.Modal(document.getElementById('modalEdit'));
-      const modalDelete = new bootstrap.Modal(document.getElementById('modalDelete'));
-
-      const formCreate = document.getElementById('formCreate');
-      const formEdit   = document.getElementById('formEdit');
-      const formDelete = document.getElementById('formDelete');
-
-      const createErrors = document.getElementById('createErrors');
-      const editErrors   = document.getElementById('editErrors');
-      const deleteErrors = document.getElementById('deleteErrors');
-
-      function formToBody(form) {
-        const fd = new FormData(form);
-        if (!fd.get('is_featured')) fd.set('is_featured', '');
-        return new URLSearchParams(fd);
-      }
-      function showErrors(el, errors) {
-        if (!el) return;
-        if (!errors) { el.classList.add("d-none"); el.innerHTML = ""; return; }
-        el.classList.remove("d-none");
-        el.innerHTML = Object.entries(errors).map(([k,v]) => `<div><strong>${k}:</strong> ${Array.isArray(v)? v.join(", ") : v}</div>`).join("");
-      }
-
-      formCreate.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        showErrors(createErrors, null);
-        try {
-          const resp = await fetch("{% url 'main:api_product_create' %}", {
-            method: "POST",
-            headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" },
-            body: formToBody(formCreate),
-          });
-          const data = await resp.json();
-          if (!resp.ok || !data.ok) {
-            showErrors(createErrors, data.errors || {"__all__":"Failed to create"});
-            return;
-          }
-          formCreate.reset();
-          modalCreate.hide();
-          await loadProducts();
-        } catch (err) {
-          showErrors(createErrors, {"__all__":"Network error"});
-          console.error(err);
-        }
-      });
-
-      document.getElementById('product-grid').addEventListener('click', async (e) => {
-        const editBtn = e.target.closest('.js-edit');
-        const delBtn  = e.target.closest('.js-delete');
-        if (editBtn) {
-          const id = editBtn.dataset.id;
+      // ADD
+      if (addForm && addBtn) {
+        addForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          addBtn.disabled = true;
+            const originalText = addBtn.textContent;
+          addBtn.textContent = 'Saving...';
+          const formData = new FormData(addForm);
+          // Mark this as AJAX
           try {
-            const resp = await fetch(`{% url 'main:api_product_detail' pk='00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', id), {
-              headers: { "X-Requested-With": "XMLHttpRequest" }
+            const resp = await fetch(addForm.action, {
+              method: 'POST',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF_TOKEN },
+              body: formData
             });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const p = await resp.json();
-            formEdit.elements["id"].value = id;
-            formEdit.elements["name"].value = p.name || "";
-            formEdit.elements["price"].value = p.price ?? "";
-            formEdit.elements["thumbnail"].value = p.thumbnail || "";
-            formEdit.elements["category"].value = p.category || "";
-            formEdit.elements["description"].value = p.description || "";
-            formEdit.elements["is_featured"].checked = !!p.is_featured;
-            showErrors(editErrors, null);
-            modalEdit.show();
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+              showToast('Add failed', 'danger');
+              if (data.errors) console.error(data.errors);
+            } else {
+              // Insert new card at start
+              ajaxGrid.insertAdjacentHTML('afterbegin', cardHTML(data.product));
+              addForm.reset();
+              bootstrap.Modal.getInstance(document.getElementById('modalAdd')).hide();
+              showToast('Product added', 'success');
+              hide(document.querySelector('[data-server-grid]'));
+              hide(document.querySelector('[data-server-empty]'));
+              show(ajaxGrid);
+            }
           } catch (err) {
-            alert("Failed to load product for editing.");
-            console.error(err);
+            showToast('Network error while adding', 'danger');
+          } finally {
+            addBtn.disabled = false;
+            addBtn.textContent = originalText;
           }
-        }
-        if (delBtn) {
-          const id = delBtn.dataset.id;
-          const name = delBtn.dataset.name || "this product";
-          formDelete.elements["id"].value = id;
-          document.getElementById('deleteName').textContent = name;
-          showErrors(deleteErrors, null);
-          modalDelete.show();
+        });
+      }
+
+      // EDIT open (prefill)
+      document.body.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-edit');
+        if (!btn) return;
+        const pk = btn.dataset.pk;
+        try {
+          // Use existing JSON detail (returns a serialized array)
+          const res = await fetch(`/products/json/${pk}/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+          const raw = await res.json();
+          // raw is a Django serialization list; adapt:
+          let obj = raw;
+          if (Array.isArray(raw) && raw.length && raw[0].fields) {
+            const f = raw[0].fields;
+            obj = {
+              pk: raw[0].pk,
+              name: f.name,
+              price: f.price,
+              description: f.description,
+              thumbnail: f.thumbnail,
+              category: f.category,
+              is_featured: f.is_featured
+            };
+          }
+          document.getElementById('edit_pk').value = obj.pk || pk;
+          document.getElementById('edit_name').value = obj.name || '';
+          document.getElementById('edit_price').value = obj.price ?? '';
+          document.getElementById('edit_description').value = obj.description || '';
+          document.getElementById('edit_thumbnail').value = obj.thumbnail || '';
+          document.getElementById('edit_category').value = obj.category || '';
+          document.getElementById('edit_is_featured').checked = !!obj.is_featured;
+
+          // Set form action to edit URL
+          editForm.action = `/products/${pk}/edit/`;
+
+          new bootstrap.Modal(document.getElementById('modalEdit')).show();
+        } catch (err) {
+          showToast('Failed to load product: ' + err.message);
         }
       });
 
-      formEdit.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        showErrors(editErrors, null);
-        const id = formEdit.elements["id"].value;
+      // EDIT submit
+      if (editForm && editBtn) {
+        editForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          editBtn.disabled = true;
+          const originalText = editBtn.textContent;
+          editBtn.textContent = 'Saving...';
+          const pk = document.getElementById('edit_pk').value;
+          const formData = new FormData(editForm);
+          try {
+            const resp = await fetch(editForm.action, {
+              method: 'POST',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF_TOKEN },
+              body: formData
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+              showToast('Update failed', 'danger');
+              if (data.errors) console.error(data.errors);
+            } else {
+              const p = data.product;
+              const card = ajaxGrid.querySelector(`[data-pk="${p.pk}"]`) ||
+                           document.querySelector(`[data-pk="${p.pk}"]`);
+              if (card) card.outerHTML = cardHTML(p);
+              bootstrap.Modal.getInstance(document.getElementById('modalEdit')).hide();
+              showToast('Product updated', 'success');
+            }
+          } catch (err) {
+            showToast('Network error while updating', 'danger');
+          } finally {
+            editBtn.disabled = false;
+            editBtn.textContent = originalText;
+          }
+        });
+      }
+
+      // DELETE
+      document.body.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.btn-delete');
+        if (!btn) return;
+        const pk = btn.dataset.pk;
+        if (!confirm('Delete this product?')) return;
         try {
-          const resp = await fetch(`{% url 'main:api_product_update' pk='00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', id), {
-            method: "POST",
-            headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" },
-            body: formToBody(formEdit),
+          const resp = await fetch(`/products/${pk}/delete/`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF_TOKEN }
           });
           const data = await resp.json();
           if (!resp.ok || !data.ok) {
-            showErrors(editErrors, data.errors || {"__all__":"Failed to update"});
-            return;
+            showToast('Delete failed', 'danger');
+          } else {
+            const card = ajaxGrid.querySelector(`[data-pk="${pk}"]`) ||
+                         document.querySelector(`[data-pk="${pk}"]`);
+            if (card) card.remove();
+            showToast('Product deleted', 'success');
+            if (!ajaxGrid.querySelector('[data-pk]') && !document.querySelector('[data-server-grid] [data-pk]')) {
+              show(emptyEl);
+            }
           }
-          modalEdit.hide();
-          await loadProducts();
         } catch (err) {
-          showErrors(editErrors, {"__all__":"Network error"});
-          console.error(err);
+            showToast('Network error while deleting', 'danger');
         }
       });
 
-      formDelete.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        showErrors(deleteErrors, null);
-        const id = formDelete.elements["id"].value;
-        try {
-          const resp = await fetch(`{% url 'main:api_product_delete' pk='00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', id), {
-            method: "POST",
-            headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" }
-          });
-          const data = await resp.json();
-          if (!resp.ok || !data.ok) {
-            showErrors(deleteErrors, data.errors || {"__all__":"Failed to delete"});
-            return;
-          }
-          modalDelete.hide();
-          await loadProducts();
-        } catch (err) {
-          showErrors(deleteErrors, {"__all__":"Network error"});
-          console.error(err);
-        }
-      });
+      // Initial load (replaces server-rendered fallback)
+      loadProducts();
     });
   </script>
 </main>

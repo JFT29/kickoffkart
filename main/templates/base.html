@@ -27,33 +27,31 @@
         <span class="text-success">Kickoff</span>Kart
       </a>
 
-      <!-- Mobile toggler -->
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#kkNav" aria-controls="kkNav" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#kkNav"
+              aria-controls="kkNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
-      <!-- Collapsible content -->
       <div class="collapse navbar-collapse" id="kkNav">
-        <!-- Center: Dynamic categories -->
+        <!-- Center categories -->
         <ul class="navbar-nav mx-auto gap-lg-3">
+          <li class="nav-item">
+            <a class="nav-link {% if not request.GET.category %}active{% endif %}"
+               href="{% url 'main:show_main' %}">Home</a>
+          </li>
+          {% for cat in nav_categories %}
             <li class="nav-item">
-              <a class="nav-link {% if not request.GET.category %}active{% endif %}" href="{% url 'main:show_main' %}">Home</a>
+              <a class="nav-link {% if request.GET.category == cat %}active{% endif %}"
+                 href="{% url 'main:show_main' %}?category={{ cat|urlencode }}">{{ cat }}</a>
             </li>
-            {% for cat in nav_categories %}
-              <li class="nav-item">
-                <a
-                  class="nav-link {% if request.GET.category == cat %}active{% endif %}"
-                  href="{% url 'main:show_main' %}?category={{ cat|urlencode }}"
-                >{{ cat }}</a>
-              </li>
-            {% empty %}
-              <li class="nav-item">
-                <a class="nav-link disabled" href="#">No Categories</a>
-              </li>
-            {% endfor %}
+          {% empty %}
+            <li class="nav-item">
+              <a class="nav-link disabled" href="#">No Categories</a>
+            </li>
+          {% endfor %}
         </ul>
 
-        <!-- Right: Auth area with modals / dropdown -->
+        <!-- Right auth area -->
         <div class="ms-auto d-flex align-items-center gap-2" id="auth-area">
           {% if request.user.is_authenticated %}
             <div class="dropdown">
@@ -145,26 +143,70 @@
     </div>
   </div>
 
-  <!-- CSRF helper script (simple access for other scripts) -->
+  <!-- Toast container -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+    <div id="appToast" class="toast align-items-center text-bg-danger border-0" role="alert"
+         aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="appToastBody">Error</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Basic CSRF helper -->
   <script>
     function getCookie(name) {
-      const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-      return m ? m.pop() : '';
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
     }
     const CSRF_TOKEN = getCookie('csrftoken');
   </script>
 
-  <!-- Bootstrap 5 JS bundle (required for modals) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+          crossorigin="anonymous"></script>
 
-  <!-- Auth Modals JS Wiring -->
+  <!-- Shared toast + fetch helpers -->
+  <script>
+    function showToast(msg, variant = "danger") {
+      const toastEl = document.getElementById('appToast');
+      const body = document.getElementById('appToastBody');
+      body.textContent = msg;
+      toastEl.className = `toast align-items-center text-bg-${variant} border-0`;
+      new bootstrap.Toast(toastEl).show();
+    }
+    async function jsonFetch(url, opts = {}) {
+      const headers = opts.headers || {};
+      const method = (opts.method || 'GET').toUpperCase();
+      if (['POST','PUT','PATCH','DELETE'].includes(method)) {
+        headers['X-CSRFToken'] = CSRF_TOKEN;
+      }
+      headers['X-Requested-With'] = 'XMLHttpRequest';
+      if (opts.json) {
+        headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(opts.json);
+      }
+      const res = await fetch(url, { ...opts, headers, credentials: 'same-origin' });
+      let data = null;
+      try { data = await res.json(); } catch(_) {}
+      if (!res.ok) {
+        const err = (data && (data.error || JSON.stringify(data.errors || data))) || res.statusText;
+        throw new Error(err);
+      }
+      return data;
+    }
+  </script>
+
+  <!-- Auth modals logic (form-encoded + credentials) -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      function getCookie(name) {
-        const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-        return m ? m.pop() : '';
-      }
-      const CSRF = getCookie('csrftoken');
+      const formLogin      = document.getElementById('formLogin');
+      const formRegister   = document.getElementById('formRegister');
+      const btnLogout      = document.getElementById('btn-logout');
+      const loginErrors    = document.getElementById('loginErrors');
+      const registerErrors = document.getElementById('registerErrors');
 
       function showErrors(el, errors) {
         if (!el) return;
@@ -174,90 +216,91 @@
           return;
         }
         el.classList.remove("d-none");
-        el.innerHTML = Object.entries(errors).map(([k, v]) =>
-          `<div><strong>${k}:</strong> ${Array.isArray(v) ? v.join(", ") : v}</div>`
-        ).join("");
+        el.innerHTML = Object.entries(errors).map(([k,v]) =>
+          `<div><strong>${k}:</strong> ${Array.isArray(v)? v.join(", ") : v}</div>`).join("");
       }
 
-      const formLogin      = document.getElementById('formLogin');
-      const formRegister   = document.getElementById('formRegister');
-      const btnLogout      = document.getElementById('btn-logout');
-      const loginErrors    = document.getElementById('loginErrors');
-      const registerErrors = document.getElementById('registerErrors');
-
-      function tryReloadProducts() {
-        if (typeof window.loadProducts === 'function') {
-            window.loadProducts();
-        } else {
-            window.location.reload();
-        }
-      }
-
-      // Login
+      // LOGIN (form-encoded + credentials)
       if (formLogin) {
         const modalLogin = new bootstrap.Modal(document.getElementById('modalLogin'));
         formLogin.addEventListener('submit', async (e) => {
           e.preventDefault();
           showErrors(loginErrors, null);
+          const formData = new FormData(formLogin);
+          const body = new URLSearchParams(formData);
+
           try {
             const resp = await fetch("{% url 'main:api_login' %}", {
-              method: "POST",
-              headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" },
-              body: new URLSearchParams(new FormData(formLogin))
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+              },
+              body,
+              credentials: 'same-origin'
             });
             const data = await resp.json();
             if (!resp.ok || !data.ok) {
-              showErrors(loginErrors, data.errors || {"__all__":"Login failed"});
+              showErrors(loginErrors, data.errors || {"__all__": (data.error || "Login failed")});
+              showToast('Login failed');
               return;
             }
             modalLogin.hide();
-            window.location.reload();
+            window.location = data.redirect || "{% url 'main:show_main' %}";
           } catch (err) {
             showErrors(loginErrors, {"__all__":"Network error"});
-            console.error(err);
+            showToast('Login network error');
           }
         });
       }
 
-      // Register
+      // REGISTER (still form-encoded)
       if (formRegister) {
         const modalRegister = new bootstrap.Modal(document.getElementById('modalRegister'));
         formRegister.addEventListener('submit', async (e) => {
           e.preventDefault();
           showErrors(registerErrors, null);
+          const formData = new FormData(formRegister);
+          const body = new URLSearchParams(formData);
           try {
             const resp = await fetch("{% url 'main:api_register' %}", {
-              method: "POST",
-              headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" },
-              body: new URLSearchParams(new FormData(formRegister))
+              method: 'POST',
+              headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+              },
+              body,
+              credentials: 'same-origin'
             });
             const data = await resp.json();
             if (!resp.ok || !data.ok) {
               showErrors(registerErrors, data.errors || {"__all__":"Registration failed"});
+              showToast('Registration failed');
               return;
             }
             modalRegister.hide();
-            window.location.reload();
+            window.location = "{% url 'main:show_main' %}";
           } catch (err) {
             showErrors(registerErrors, {"__all__":"Network error"});
-            console.error(err);
+            showToast('Registration network error');
           }
         });
       }
 
-      // Logout
+      // LOGOUT
       if (btnLogout) {
         btnLogout.addEventListener('click', async (e) => {
           e.preventDefault();
           try {
             await fetch("{% url 'main:api_logout' %}", {
-              method: "POST",
-              headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" }
+              method: 'POST',
+              headers: { 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+              credentials: 'same-origin'
             });
-            window.location.reload();
-          } catch (err) {
-            window.location.reload();
-          }
+          } catch(_) {}
+          window.location.reload();
         });
       }
     });
