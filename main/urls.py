@@ -22,13 +22,13 @@ urlpatterns = [
     path("api/products/", views.api_product_list, name="api_product_list"),
     path("api/products/<uuid:pk>/", views.api_product_detail, name="api_product_detail"),
 
-    # API write endpoints
+    # API (write) endpoints
     path("api/products/create/", views.api_product_create, name="api_product_create"),
     path("api/products/<uuid:pk>/update/", views.api_product_update, name="api_product_update"),
     path("api/products/<uuid:pk>/delete/", views.api_product_delete, name="api_product_delete"),
 
-    # Auth
-    path("register/", views.register, name="register"),
-    path("login/", views.login_user, name="login"),
-    path("logout/", views.logout_user, name="logout"),
+    # API (auth) endpoints
+    path("api/auth/login/", views.api_login, name="api_login"),
+    path("api/auth/logout/", views.api_logout, name="api_logout"),
+    path("api/auth/register/", views.api_register, name="api_register"),
 ]

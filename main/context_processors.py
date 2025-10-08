@@ -1,20 +1,15 @@
-from django.contrib.auth.models import AnonymousUser
+# main/context_processors.py
 from .models import Product
 
 def nav_categories(request):
-    """
-    Return distinct categories for the authenticated user's products.
-    Empty list for anonymous users.
-    """
-    user = getattr(request, "user", AnonymousUser())
-    if not getattr(user, "is_authenticated", False):
-        return {"nav_categories": []}
+    if request.user.is_authenticated:
+        qs = Product.objects.filter(user=request.user)
+    else:
+        qs = Product.objects.none()
 
-    cats = (
-        Product.objects
-        .filter(user=user)
-        .values_list("category", flat=True)
-        .distinct()
-        .order_by("category")
+    categories = (
+        qs.order_by()
+          .values_list("category", flat=True)
+          .distinct()
     )
-    return {"nav_categories": list(cats)}
+    return {"nav_categories": list(categories)}

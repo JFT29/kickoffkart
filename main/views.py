@@ -8,7 +8,8 @@ from django.http import (
 )
 from django.core import serializers
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from django.contrib.auth import login, logout
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
@@ -26,72 +27,49 @@ class ProductAjaxForm(ModelForm):
         model = Product
         fields = ["name", "price", "description", "thumbnail", "category", "is_featured"]
 
+def login_page(request):
+    # Minimal page that opens the existing Login modal from base.html
+    return render(request, "login.html")
 
 def product_to_dict(p, request):
-    """Convert a Product instance to a dictionary with URLs."""
     return {
         "id": str(p.pk),
         "name": p.name,
         "price": p.price,
         "description": p.description,
-        "thumbnail": p.thumbnail,  # external URL or static path
+        "thumbnail": p.thumbnail,
         "category": p.category,
         "is_featured": p.is_featured,
         "urls": {
             "detail": reverse("main:product_detail", kwargs={"pk": p.pk}),
             "edit": reverse("main:product_edit", kwargs={"pk": p.pk})
-            if hasattr(p, "user") and p.user_id == request.user.id
-            else None,
+            if hasattr(p, "user") and p.user_id == request.user.id else None,
             "delete": reverse("main:product_delete", kwargs={"pk": p.pk})
-            if hasattr(p, "user") and p.user_id == request.user.id
-            else None,
+            if hasattr(p, "user") and p.user_id == request.user.id else None,
         },
     }
 
-
-@login_required(login_url="main:login")
 def show_main(request):
-    products_qs = Product.objects.filter(user=request.user).order_by(
-        "-is_featured", "name"
-    )
-
     category = request.GET.get("category")
+    if request.user.is_authenticated:
+        products_qs = Product.objects.filter(user=request.user)
+    else:
+        # Anonymous visitors: show nothing (or switch to .all() if you want public view)
+        products_qs = Product.objects.none()
+
     if category:
         products_qs = products_qs.filter(category=category)
 
-    # Optional lightweight JSON path (?ajax=1)
-    if request.GET.get("ajax"):
-        data = list(
-            products_qs.values(
-                "id",
-                "name",
-                "price",
-                "category",
-                "description",
-                "thumbnail",
-                "is_featured",
-            )
-        )
-        return JsonResponse(
-            {
-                "count": len(data),
-                "category": category,
-                "products": data,
-            },
-            safe=False,
-        )
-
-    last_login = request.COOKIES.get("last_login")
+    products = list(products_qs.order_by("-is_featured", "name"))
 
     context = {
         "app_name": "KickoffKart",
-        "your_name": "Juansao Fortunio Tandi",
+        "your_name": "Juansao Fortunio Tandi" if request.user.is_authenticated and request.user.username == "andi.nusantara" else "Budi Santoso" if request.user.is_authenticated and request.user.username == "budi.santoso" else "Guest",
         "your_class": "KKI",
         "your_npm": "2406365345",
-        "total_products": products_qs.count(),
-        "products": products_qs,
-        "last_login": last_login,
-        "selected_category": category,
+        "products": products,
+        "total_products": len(products),
+        "active_category": category or "",
     }
     return render(request, "main.html", context)
 
@@ -123,7 +101,6 @@ def product_edit(request, pk):
     if product.user != request.user:
         messages.error(request, "You are not allowed to edit this item.")
         return HttpResponseForbidden("Forbidden")
-
     if request.method == "POST":
         form = ProductForm(request.POST, request.FILES or None, instance=product)
         if form.is_valid():
@@ -141,17 +118,14 @@ def product_delete(request, pk):
     if product.user != request.user:
         messages.error(request, "You are not allowed to delete this item.")
         return HttpResponseForbidden("Forbidden")
-
     if request.method == "POST":
         product.delete()
         messages.success(request, "Product deleted successfully.")
         return redirect("main:show_main")
-
     messages.warning(request, "Delete must be submitted as POST.")
     return redirect("main:product_detail", pk=pk)
 
 
-# Data delivery: list (JSON/XML) — global (not owner-filtered)
 def product_list_json(request):
     data = serializers.serialize("json", Product.objects.all())
     return HttpResponse(data, content_type="application/json")
@@ -162,7 +136,6 @@ def product_list_xml(request):
     return HttpResponse(data, content_type="application/xml")
 
 
-# Data delivery: by id (JSON/XML)
 def product_detail_json(request, pk):
     qs = Product.objects.filter(pk=pk)
     if not qs.exists():
@@ -197,13 +170,8 @@ def login_user(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-
             next_url = request.GET.get("next")
-            if next_url:
-                response = redirect(next_url)
-            else:
-                response = redirect("main:show_main")
-
+            response = redirect(next_url) if next_url else redirect("main:show_main")
             response.set_cookie(
                 "last_login",
                 timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -213,7 +181,6 @@ def login_user(request):
             return response
     else:
         form = AuthenticationForm()
-    # Ensure CSRF token available for front-end scripts if needed
     get_token(request)
     return render(request, "login.html", {"form": form})
 
@@ -225,7 +192,6 @@ def logout_user(request):
     return response
 
 
-# API read endpoints (owner-scoped)
 @login_required
 def api_product_list(request):
     qs = Product.objects.filter(user=request.user).order_by("-is_featured", "name")
@@ -242,7 +208,6 @@ def api_product_detail(request, pk):
     return JsonResponse(product_to_dict(p, request), status=200)
 
 
-# API write endpoints
 @login_required
 @require_POST
 def api_product_create(request):
@@ -252,9 +217,7 @@ def api_product_create(request):
         if hasattr(p, "user_id"):
             p.user = request.user
         p.save()
-        return JsonResponse(
-            {"ok": True, "product": product_to_dict(p, request)}, status=201
-        )
+        return JsonResponse({"ok": True, "product": product_to_dict(p, request)}, status=201)
     return JsonResponse({"ok": False, "errors": form.errors}, status=400)
 
 
@@ -265,9 +228,7 @@ def api_product_update(request, pk):
     form = ProductAjaxForm(request.POST, instance=p)
     if form.is_valid():
         p = form.save()
-        return JsonResponse(
-            {"ok": True, "product": product_to_dict(p, request)}, status=200
-        )
+        return JsonResponse({"ok": True, "product": product_to_dict(p, request)}, status=200)
     return JsonResponse({"ok": False, "errors": form.errors}, status=400)
 
 
@@ -277,3 +238,35 @@ def api_product_delete(request, pk):
     p = get_object_or_404(Product, pk=pk, user=request.user)
     p.delete()
     return JsonResponse({"ok": True}, status=200)
+
+
+@require_POST
+def api_login(request):
+    username = request.POST.get("username", "").strip()
+    password = request.POST.get("password", "")
+    user = authenticate(request, username=username, password=password)
+    if user is None:
+        return JsonResponse({"ok": False, "errors": {"__all__": ["Invalid credentials."]}}, status=400)
+    login(request, user)
+    return JsonResponse({"ok": True, "user": {"username": user.username}}, status=200)
+
+
+@require_POST
+def api_logout(request):
+    if request.user.is_authenticated:
+        logout(request)
+    return JsonResponse({"ok": True}, status=200)
+
+
+@require_POST
+def api_register(request):
+    username = request.POST.get("username", "").strip()
+    email = request.POST.get("email", "").strip()
+    password = request.POST.get("password", "")
+    if not username or not password:
+        return JsonResponse({"ok": False, "errors": {"__all__": ["Username and password are required."]}}, status=400)
+    if User.objects.filter(username=username).exists():
+        return JsonResponse({"ok": False, "errors": {"username": ["Username already taken."]}}, status=400)
+    user = User.objects.create_user(username=username, email=email, password=password)
+    login(request, user)
+    return JsonResponse({"ok": True, "user": {"username": user.username}}, status=201)

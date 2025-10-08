@@ -36,40 +36,39 @@
       <div class="collapse navbar-collapse" id="kkNav">
         <!-- Center: Dynamic categories -->
         <ul class="navbar-nav mx-auto gap-lg-3">
-          <li class="nav-item">
-            <a class="nav-link {% if not request.GET.category %}active{% endif %}" href="{% url 'main:show_main' %}">Home</a>
-          </li>
-          {% for cat in nav_categories %}
             <li class="nav-item">
-              <a
-                class="nav-link {% if request.GET.category == cat %}active{% endif %}"
-                href="{% url 'main:show_main' %}?category={{ cat|urlencode }}"
-              >{{ cat }}</a>
+              <a class="nav-link {% if not request.GET.category %}active{% endif %}" href="{% url 'main:show_main' %}">Home</a>
             </li>
-          {% empty %}
-            <li class="nav-item">
-              <a class="nav-link disabled" href="#">No Categories</a>
-            </li>
-          {% endfor %}
+            {% for cat in nav_categories %}
+              <li class="nav-item">
+                <a
+                  class="nav-link {% if request.GET.category == cat %}active{% endif %}"
+                  href="{% url 'main:show_main' %}?category={{ cat|urlencode }}"
+                >{{ cat }}</a>
+              </li>
+            {% empty %}
+              <li class="nav-item">
+                <a class="nav-link disabled" href="#">No Categories</a>
+              </li>
+            {% endfor %}
         </ul>
 
-        <!-- Right: Auth/User block -->
-        <ul class="navbar-nav ms-auto align-items-center gap-3">
+        <!-- Right: Auth area with modals / dropdown -->
+        <div class="ms-auto d-flex align-items-center gap-2" id="auth-area">
           {% if request.user.is_authenticated %}
-            <li class="nav-item text-end">
-              <div class="small fw-semibold">{{ request.user.username }}</div>
-            </li>
-            <li class="nav-item">
-              <form method="post" action="{% url 'main:logout' %}" class="m-0">
-                {% csrf_token %}
-                <button class="btn btn-outline-danger btn-sm" type="submit">Logout</button>
-              </form>
-            </li>
+            <div class="dropdown">
+              <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                {{ request.user.username }}
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#" id="btn-logout">Logout</a></li>
+              </ul>
+            </div>
           {% else %}
-            <li class="nav-item"><a class="nav-link" href="{% url 'main:login' %}">Login</a></li>
-            <li class="nav-item"><a class="btn btn-primary btn-sm" href="{% url 'main:register' %}">Register</a></li>
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalLogin">Login</button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRegister">Register</button>
           {% endif %}
-        </ul>
+        </div>
       </div>
     </div>
   </nav>
@@ -86,7 +85,67 @@
 
   {% block content %}{% endblock %}
 
-  <!-- CSRF helper script -->
+  <!-- Login Modal -->
+  <div class="modal fade" id="modalLogin" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form id="formLogin" class="modal-content" method="post" action="#">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Login</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="loginErrors" class="alert alert-danger d-none"></div>
+          <div class="mb-2">
+            <label class="form-label">Username</label>
+            <input name="username" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Password</label>
+            <input name="password" type="password" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" type="submit">Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div class="modal fade" id="modalRegister" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form id="formRegister" class="modal-content" method="post" action="#">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Register</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="registerErrors" class="alert alert-danger d-none"></div>
+          <div class="mb-2">
+            <label class="form-label">Username</label>
+            <input name="username" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Email (optional)</label>
+            <input name="email" type="email" class="form-control">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Password</label>
+            <input name="password" type="password" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" type="submit">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CSRF helper script (simple access for other scripts) -->
   <script>
     function getCookie(name) {
       const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
@@ -97,5 +156,111 @@
 
   <!-- Bootstrap 5 JS bundle (required for modals) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+  <!-- Auth Modals JS Wiring -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      function getCookie(name) {
+        const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return m ? m.pop() : '';
+      }
+      const CSRF = getCookie('csrftoken');
+
+      function showErrors(el, errors) {
+        if (!el) return;
+        if (!errors) {
+          el.classList.add("d-none");
+          el.innerHTML = "";
+          return;
+        }
+        el.classList.remove("d-none");
+        el.innerHTML = Object.entries(errors).map(([k, v]) =>
+          `<div><strong>${k}:</strong> ${Array.isArray(v) ? v.join(", ") : v}</div>`
+        ).join("");
+      }
+
+      const formLogin      = document.getElementById('formLogin');
+      const formRegister   = document.getElementById('formRegister');
+      const btnLogout      = document.getElementById('btn-logout');
+      const loginErrors    = document.getElementById('loginErrors');
+      const registerErrors = document.getElementById('registerErrors');
+
+      function tryReloadProducts() {
+        if (typeof window.loadProducts === 'function') {
+            window.loadProducts();
+        } else {
+            window.location.reload();
+        }
+      }
+
+      // Login
+      if (formLogin) {
+        const modalLogin = new bootstrap.Modal(document.getElementById('modalLogin'));
+        formLogin.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          showErrors(loginErrors, null);
+          try {
+            const resp = await fetch("{% url 'main:api_login' %}", {
+              method: "POST",
+              headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" },
+              body: new URLSearchParams(new FormData(formLogin))
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+              showErrors(loginErrors, data.errors || {"__all__":"Login failed"});
+              return;
+            }
+            modalLogin.hide();
+            window.location.reload();
+          } catch (err) {
+            showErrors(loginErrors, {"__all__":"Network error"});
+            console.error(err);
+          }
+        });
+      }
+
+      // Register
+      if (formRegister) {
+        const modalRegister = new bootstrap.Modal(document.getElementById('modalRegister'));
+        formRegister.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          showErrors(registerErrors, null);
+          try {
+            const resp = await fetch("{% url 'main:api_register' %}", {
+              method: "POST",
+              headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" },
+              body: new URLSearchParams(new FormData(formRegister))
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) {
+              showErrors(registerErrors, data.errors || {"__all__":"Registration failed"});
+              return;
+            }
+            modalRegister.hide();
+            window.location.reload();
+          } catch (err) {
+            showErrors(registerErrors, {"__all__":"Network error"});
+            console.error(err);
+          }
+        });
+      }
+
+      // Logout
+      if (btnLogout) {
+        btnLogout.addEventListener('click', async (e) => {
+          e.preventDefault();
+          try {
+            await fetch("{% url 'main:api_logout' %}", {
+              method: "POST",
+              headers: { "X-CSRFToken": CSRF, "X-Requested-With": "XMLHttpRequest" }
+            });
+            window.location.reload();
+          } catch (err) {
+            window.location.reload();
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
