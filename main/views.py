@@ -14,7 +14,8 @@ from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.csrf import csrf_exempt
 from django.forms import ModelForm
 from django.middleware.csrf import get_token
 
@@ -224,14 +225,22 @@ def logout_user(request):
 
 
 # API (read)
-@login_required
+@require_GET
 def api_product_list(request):
+    # Return JSON instead of redirecting to HTML login page
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"ok": False, "error": "auth_required"},
+            status=401,
+        )
+
     qs = Product.objects.filter(user=request.user).order_by("-is_featured", "name")
     category = request.GET.get("category")
     if category:
         qs = qs.filter(category=category)
+
     data = [product_to_dict(p) for p in qs]
-    return JsonResponse({"products": data}, status=200)
+    return JsonResponse({"ok": True, "products": data}, status=200)
 
 
 @login_required
@@ -241,67 +250,150 @@ def api_product_detail(request, pk):
 
 
 # API (write)
-@login_required
+@csrf_exempt
 @require_POST
 def api_product_create(request):
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"ok": False, "error": "auth_required"},
+            status=401,
+        )
+
     form = ProductAjaxForm(request.POST)
     if form.is_valid():
         p = form.save(commit=False)
         p.user = request.user
         p.save()
-        return JsonResponse({"ok": True, "product": product_to_dict(p)}, status=201)
+        return JsonResponse(
+            {"ok": True, "product": product_to_dict(p)},
+            status=201,
+        )
     return JsonResponse({"ok": False, "errors": form.errors}, status=400)
 
 
-@login_required
+@csrf_exempt
 @require_POST
 def api_product_update(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"ok": False, "error": "auth_required"},
+            status=401,
+        )
+
     p = get_object_or_404(Product, pk=pk, user=request.user)
     form = ProductAjaxForm(request.POST, instance=p)
     if form.is_valid():
         p = form.save()
-        return JsonResponse({"ok": True, "product": product_to_dict(p)}, status=200)
+        return JsonResponse(
+            {"ok": True, "product": product_to_dict(p)},
+            status=200,
+        )
     return JsonResponse({"ok": False, "errors": form.errors}, status=400)
 
 
-@login_required
+@csrf_exempt
 @require_POST
 def api_product_delete(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse(
+            {"ok": False, "error": "auth_required"},
+            status=401,
+        )
+
     p = get_object_or_404(Product, pk=pk, user=request.user)
     pk_str = str(p.pk)
     p.delete()
     return JsonResponse({"ok": True, "deleted": pk_str}, status=200)
 
-
 # API auth (form-encoded)
+@csrf_exempt
 @require_POST
 def api_login(request):
     username = request.POST.get("username", "").strip()
     password = request.POST.get("password", "")
     user = authenticate(request, username=username, password=password)
+
     if user is not None:
         login(request, user)
-        next_url = request.GET.get("next") or request.POST.get("next") or reverse("main:show_main")
-        return JsonResponse({"ok": True, "redirect": next_url})
-    return JsonResponse({"ok": False, "error": "Invalid credentials."}, status=400)
+        next_url = (
+            request.GET.get("next")
+            or request.POST.get("next")
+            or reverse("main:show_main")
+        )
+
+        return JsonResponse(
+            {
+                "ok": True,                 # for existing JS
+                "status": True,             # for Flutter / pbp_django_auth
+                "message": "Login successful.",
+                "username": user.username,
+                "redirect": next_url,
+            },
+            status=200,
+        )
+
+    return JsonResponse(
+        {
+            "ok": False,
+            "status": False,
+            "message": "Invalid credentials.",
+        },
+        status=400,
+    )
 
 
+@csrf_exempt
 @require_POST
 def api_logout(request):
     if request.user.is_authenticated:
         logout(request)
-    return JsonResponse({"ok": True}, status=200)
+    return JsonResponse(
+        {
+            "ok": True,
+            "status": True,
+            "message": "Logged out.",
+        },
+        status=200,
+    )
 
 
+@csrf_exempt
 @require_POST
 def api_register(request):
     username = request.POST.get("username", "").strip()
     email = request.POST.get("email", "").strip()
     password = request.POST.get("password", "")
+
     if not username or not password:
-        return JsonResponse({"ok": False, "errors": {"__all__": ["Username and password are required."]}}, status=400)
+        return JsonResponse(
+            {
+                "ok": False,
+                "status": False,
+                "message": "Username and password are required.",
+            },
+            status=400,
+        )
+
     if User.objects.filter(username=username).exists():
-        return JsonResponse({"ok": False, "errors": {"username": ["Username already taken."]}}, status=400)
+        return JsonResponse(
+            {
+                "ok": False,
+                "status": False,
+                "message": "Username already taken.",
+            },
+            status=400,
+        )
+
     user = User.objects.create_user(username=username, email=email, password=password)
     login(request, user)
-    return JsonResponse({"ok": True, "redirect": reverse("main:show_main"), "user": {"username": user.username}}, status=201)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "status": True,
+            "message": "Registration successful.",
+            "username": user.username,
+            "redirect": reverse("main:show_main"),
+        },
+        status=201,
+    )
